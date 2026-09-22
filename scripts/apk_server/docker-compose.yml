@@ -1,0 +1,26 @@
+services:
+  apk-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pypackager-apk-server:latest
+    container_name: pypackager-apk
+    restart: unless-stopped
+    ports:
+      # 宿主机端口可用 SERVICE_PORT 覆盖（默认 8000），容器内固定 8000。
+      - "${SERVICE_PORT:-8000}:8000"
+    volumes:
+      # 持久化 buildozer 缓存（全局包/编译中间产物），重启或重建容器后仍可复用、加速编译。
+      - pypackager_buildozer:/root/.buildozer
+    environment:
+      # 编译任务工作目录（每个 jobId 一个子目录）。默认 /tmp/pypackager_jobs。
+      APK_WORKDIR: /tmp/pypackager_jobs
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  pypackager_buildozer:

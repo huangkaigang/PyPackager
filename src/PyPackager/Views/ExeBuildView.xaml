@@ -1,0 +1,231 @@
+<UserControl x:Class="PyPackager.Views.ExeBuildView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             AllowDrop="True" Drop="UserControl_Drop" DragOver="UserControl_DragOver"
+             Background="{StaticResource BgBrush}">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <TextBlock Text="EXE 打包" Style="{StaticResource PageTitle}"/>
+            <TextBlock Text="把 Python 项目一键打包成 Windows 可执行文件。支持 PyInstaller 与 Nuitka 两种引擎；系统环境缺工具时会自动切换到内部虚拟环境。"
+                       Style="{StaticResource PageSubtitle}"/>
+        </StackPanel>
+
+        <!-- 项目选择 -->
+        <GroupBox Grid.Row="1" Header="1. 选择项目">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="项目目录" Style="{StaticResource Label}"/>
+                <TextBox Grid.Row="0" Grid.Column="1" x:Name="ProjectPathBox" Margin="0,0,8,0"/>
+                <Button Grid.Row="0" Grid.Column="2" Content="浏览…" Click="BrowseProject_Click"/>
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="入口文件" Style="{StaticResource Label}" Margin="0,10,8,0"/>
+                <ComboBox Grid.Row="1" Grid.Column="1" x:Name="EntryCombo" Margin="0,10,8,0" IsEditable="True"/>
+                <Button Grid.Row="1" Grid.Column="2" Content="刷新列表" Margin="0,10,0,0" Click="RefreshEntry_Click"/>
+            </Grid>
+        </GroupBox>
+
+        <!-- 引擎 -->
+        <GroupBox Grid.Row="2" Header="2. 打包引擎">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <RadioButton x:Name="EnginePyInstaller" Content="PyInstaller" GroupName="Engine"
+                                 IsChecked="True" Checked="Engine_Changed"/>
+                    <RadioButton x:Name="EngineNuitka" Content="Nuitka" GroupName="Engine" Checked="Engine_Changed"/>
+                </StackPanel>
+                <TextBlock x:Name="EngineHint" TextWrapping="Wrap" Margin="0,8,0,0" FontSize="12"
+                           Foreground="{StaticResource MutedBrush}"
+                           Text="PyInstaller：成熟、快、无需 C 编译器，适合大多数场景。"/>
+            </StackPanel>
+        </GroupBox>
+
+        <!-- 选项 -->
+        <GroupBox Grid.Row="3" Header="3. 目标平台与打包选项">
+            <StackPanel>
+                <!-- 目标平台：决定用哪个 Python 运行时打包，从而决定 EXE 的兼容系统与位数 -->
+                <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
+                        Padding="0,0,0,10" Margin="0,0,0,12">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="160"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="目标系统" Style="{StaticResource Label}"/>
+                            <ComboBox Grid.Column="1" x:Name="TargetCombo" Margin="0,0,16,0"
+                                      SelectionChanged="Target_Changed">
+                                <ComboBoxItem Content="自动 / 当前系统（用本机 Python，不下载）" IsSelected="True"/>
+                                <ComboBoxItem Content="Windows 7 / Server 2008 R2"/>
+                                <ComboBoxItem Content="Windows 8 / 8.1 / Server 2012 R2"/>
+                                <ComboBoxItem Content="Windows 10 / Server 2016 / 2019"/>
+                                <ComboBoxItem Content="Windows 11 / Server 2022 / 2025 / 2026"/>
+                            </ComboBox>
+                            <TextBlock Grid.Column="2" Text="架构" Style="{StaticResource Label}"/>
+                            <ComboBox Grid.Column="3" x:Name="ArchCombo" SelectionChanged="Target_Changed">
+                                <ComboBoxItem Content="自动（默认 64 位）" IsSelected="True"/>
+                                <ComboBoxItem Content="x86（32 位）"/>
+                                <ComboBoxItem Content="x64（64 位）"/>
+                            </ComboBox>
+                        </Grid>
+                        <TextBlock x:Name="TargetHint" TextWrapping="Wrap" Margin="0,8,0,0" FontSize="12"
+                                   Foreground="{StaticResource MutedBrush}"
+                                   Text="不下载运行时，直接用本机系统 Python。"/>
+                    </StackPanel>
+                </Border>
+
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="应用名称" Style="{StaticResource Label}"/>
+                    <TextBox Grid.Row="0" Grid.Column="1" x:Name="AppNameBox" Margin="0,0,16,0" ToolTip="留空则使用入口脚本名"/>
+                    <TextBlock Grid.Row="0" Grid.Column="2" Text="图标(.ico)" Style="{StaticResource Label}"/>
+                    <Grid Grid.Row="0" Grid.Column="3">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" x:Name="IconBox" Margin="0,0,8,0"/>
+                        <Button Grid.Column="1" Content="…" Padding="10,7" Click="BrowseIcon_Click"/>
+                    </Grid>
+                    <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" Orientation="Horizontal" Margin="0,12,0,0">
+                        <CheckBox x:Name="OneFileCheck" Content="单文件 EXE (--onefile)" IsChecked="True"/>
+                        <CheckBox x:Name="NoConsoleCheck" Content="无控制台黑框 (GUI 程序)"/>
+                    </StackPanel>
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="产品名" Style="{StaticResource Label}" Margin="0,12,8,0"/>
+                    <TextBox Grid.Row="2" Grid.Column="1" x:Name="ProductNameBox" Margin="0,12,16,0" ToolTip="写入 EXE 属性的产品名称"/>
+                    <TextBlock Grid.Row="2" Grid.Column="2" Text="版本号" Style="{StaticResource Label}" Margin="0,12,8,0"/>
+                    <TextBox Grid.Row="2" Grid.Column="3" x:Name="FileVersionBox" Margin="0,12,0,0" ToolTip="例如 1.0.0.0"/>
+                </Grid>
+
+                <Border x:Name="PyInstallerPanel" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0"
+                        Margin="0,12,0,0" Padding="0,10,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <CheckBox Grid.Column="0" x:Name="UpxCheck" Content="UPX 压缩体积"/>
+                        <TextBlock Grid.Column="1" Text="UPX 目录" Style="{StaticResource Label}"/>
+                        <TextBox Grid.Column="2" x:Name="UpxDirBox" ToolTip="可选，UPX 可执行文件所在目录"/>
+                    </Grid>
+                </Border>
+
+                <Border x:Name="NuitkaPanel" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0"
+                        Margin="0,12,0,0" Padding="0,10,0,0" Visibility="Collapsed">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="C 编译器" Style="{StaticResource Label}"/>
+                        <ComboBox Grid.Row="0" Grid.Column="1" x:Name="CompilerCombo" Width="120" Margin="0,0,16,0">
+                            <ComboBoxItem Content="自动/MinGW" IsSelected="True"/>
+                            <ComboBoxItem Content="MinGW64"/>
+                            <ComboBoxItem Content="MSVC"/>
+                        </ComboBox>
+                        <CheckBox Grid.Row="0" Grid.Column="2" x:Name="LtoCheck" Content="LTO 优化(更慢更小)"/>
+                        <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Horizontal">
+                            <TextBlock Text="并行任务" Style="{StaticResource Label}"/>
+                            <TextBox x:Name="JobsBox" Width="50" Text="0" ToolTip="0 = 使用默认"/>
+                        </StackPanel>
+                        <CheckBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" x:Name="RemoveOutputCheck"
+                                  Content="编译后清理中间文件 (--remove-output)" IsChecked="True" Margin="0,12,0,0"/>
+                    </Grid>
+                </Border>
+
+                <!-- 数据文件与隐藏导入（两个引擎共用） -->
+                <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0"
+                        Margin="0,12,0,0" Padding="0,10,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="附加数据文件" FontWeight="Bold" Margin="0,0,0,2"/>
+                            <TextBlock Text="把资源/配置随 EXE 打包。格式：源路径;目标目录（双击条目可编辑）"
+                                       FontSize="11" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,6"/>
+                            <ListBox x:Name="DataList" Height="110" MouseDoubleClick="DataList_MouseDoubleClick"
+                                     Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource TextBrush}"
+                                     BorderBrush="{StaticResource BorderBrush}"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                <Button Content="添加文件…" Click="AddData_Click" Padding="10,4"/>
+                                <Button Content="移除选中" Click="RemoveData_Click" Padding="10,4"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="隐藏导入模块" FontWeight="Bold" Margin="0,0,0,2"/>
+                            <TextBlock Text="打包器静态分析漏掉的模块，手动补上（PyInstaller --hidden-import / Nuitka --include-package）"
+                                       FontSize="11" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,6"/>
+                            <ListBox x:Name="HiddenList" Height="110"
+                                     Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource TextBrush}"
+                                     BorderBrush="{StaticResource BorderBrush}"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                <Button Content="添加模块…" Click="AddHidden_Click" Padding="10,4"/>
+                                <Button Content="移除选中" Click="RemoveHidden_Click" Padding="10,4"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </StackPanel>
+        </GroupBox>
+
+        <!-- 操作 -->
+        <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,4,0,12">
+            <Button x:Name="BuildBtn" Content="🚀 开始打包 EXE" Style="{StaticResource Primary}" Click="Build_Click"/>
+            <Button x:Name="CancelBtn" Content="取消" Click="Cancel_Click" IsEnabled="False"/>
+            <Button x:Name="OpenOutBtn" Content="📂 打开输出目录" Click="OpenOutput_Click" IsEnabled="False"/>
+        </StackPanel>
+
+        <!-- 进度 -->
+        <Grid Grid.Row="5" Margin="0,0,0,10">
+            <ProgressBar x:Name="Progress" Height="18" Minimum="0" Maximum="100"
+                         Background="{StaticResource OverlayBrush}" Foreground="{StaticResource GreenBrush}" BorderThickness="0"/>
+            <TextBlock x:Name="ProgressText" HorizontalAlignment="Center" VerticalAlignment="Center"
+                       FontSize="11" Foreground="#1E1E2E" FontWeight="Bold" Text="就绪"/>
+        </Grid>
+
+        <!-- 日志 -->
+        <GroupBox Grid.Row="6" Header="4. 实时日志" Grid.RowSpan="2">
+            <TextBox x:Name="LogBox" Style="{StaticResource LogBox}"/>
+        </GroupBox>
+    </Grid>
+</UserControl>

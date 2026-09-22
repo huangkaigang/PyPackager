@@ -1,0 +1,4 @@
+# Web 层依赖。buildozer / cython==0.29.36 由 Dockerfile 显式安装（编译层），不在此处。
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9

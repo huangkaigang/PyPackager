@@ -1,0 +1,39 @@
+# ===== .NET / WPF =====
+bin/
+obj/
+[Bb]uild/
+[Rr]elease/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+.idea/
+*.swp
+[Dd]esktop.ini
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.Python
+*.egg-info/
+.pytest_cache/
+
+# ===== Android / buildozer 产物 =====
+.buildozer/
+.gradle/
+*.apk
+*.aab
+
+# ===== PyPackager 本地数据 =====
+# 凭据/配置一律存于 %LOCALAPPDATA%\PyPackager（DPAPI 加密），不进入仓库；
+# 此处仅兜底防止误把本地数据拷进项目目录后提交。
+PyPackagerData/
+ssh.json
+apk.json
+history.json
+last_deploy.json

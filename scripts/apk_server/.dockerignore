@@ -1,0 +1,14 @@
+# 构建上下文里排除的东西，避免污染镜像 / 拖慢构建。
+__pycache__/
+*.pyc
+*.pyo
+.git/
+.gitignore
+*.md
+!README.md
+build.sh
+docker-compose.yml
+.dockerignore
+# 本地跑服务端时产生的任务目录 / 缓存
+jobs/
+*.apk

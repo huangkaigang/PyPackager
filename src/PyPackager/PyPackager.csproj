@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>PyPackager</AssemblyName>
+    <RootNamespace>PyPackager</RootNamespace>
+    <Version>0.1.0</Version>
+    <Company>PyPackager</Company>
+    <Product>PyPackager - Python 一键打包工具</Product>
+  </PropertyGroup>
+
+  <!-- 把仓库根目录下的 Python 引擎脚本随程序一起分发到输出目录的 scripts\ -->
+  <!-- 排除 apk_server（云端参考服务端），它单独复制到 apk_server\ 供「服务器部署」上传 -->
+  <ItemGroup>
+    <None Include="..\..\scripts\**\*.py" Exclude="..\..\scripts\apk_server\**\*" LinkBase="scripts">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!-- 云端 APK 编译服务端文件：随客户端分发，供「服务器部署」功能通过 SFTP 上传到远程服务器 -->
+  <ItemGroup>
+    <None Include="..\..\scripts\apk_server\Dockerfile;..\..\scripts\apk_server\server.py;..\..\scripts\apk_server\requirements.txt;..\..\scripts\apk_server\docker-compose.yml;..\..\scripts\apk_server\.dockerignore" LinkBase="apk_server">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="SSH.NET" Version="2024.2.0" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.0" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,196 @@
+<UserControl x:Class="PyPackager.Views.ApkBuildView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="{StaticResource BgBrush}">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="220"/>
+        </Grid.RowDefinitions>
+
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+                <StackPanel>
+                    <TextBlock Text="APK 打包" Style="{StaticResource PageTitle}"/>
+                    <TextBlock Text="把 Python（Flet / Kivy）项目打包成 Android APK。本地优先：先体检本机能否用 WSL2 内的 buildozer 编译，可一键开启；若本机不具备条件，再用云端服务器打包。"
+                               Style="{StaticResource PageSubtitle}"/>
+                </StackPanel>
+
+                <GroupBox Header="1. 项目与应用信息" Margin="0,8,0,0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="项目目录" Style="{StaticResource Label}"/>
+                        <TextBox Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" x:Name="ProjectPathBox" Margin="0,0,8,0"/>
+                        <Button Grid.Row="0" Grid.Column="3" Content="浏览…" Click="BrowseProject_Click"/>
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="应用名称" Style="{StaticResource Label}" Margin="0,10,8,0"/>
+                        <TextBox Grid.Row="1" Grid.Column="1" x:Name="AppNameBox" Text="MyApp" Margin="0,10,16,0"/>
+                        <TextBlock Grid.Row="1" Grid.Column="2" Text="包名" Style="{StaticResource Label}" Margin="0,10,8,0"/>
+                        <TextBox Grid.Row="1" Grid.Column="3" x:Name="PackageBox" Text="com.example.myapp" Margin="0,10,0,0"/>
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="版本号" Style="{StaticResource Label}" Margin="0,10,8,0"/>
+                        <TextBox Grid.Row="2" Grid.Column="1" x:Name="VersionBox" Text="0.1" Margin="0,10,16,0"/>
+                        <TextBlock Grid.Row="2" Grid.Column="2" Text="入口文件" Style="{StaticResource Label}" Margin="0,10,8,0"/>
+                        <TextBox Grid.Row="2" Grid.Column="3" x:Name="EntryBox" Text="main.py" Margin="0,10,0,0"/>
+
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="权限" Style="{StaticResource Label}" Margin="0,10,8,0"/>
+                        <TextBox Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="3" x:Name="PermBox"
+                                 Text="INTERNET" Margin="0,10,0,0" ToolTip="逗号分隔，如 INTERNET,WRITE_EXTERNAL_STORAGE"/>
+                    </Grid>
+                </GroupBox>
+
+                <GroupBox Header="2. 框架" Margin="0,8,0,0">
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton x:Name="FletRadio" Content="Flet (基于 Flutter，界面现代，推荐)" GroupName="Fw" IsChecked="True"/>
+                        <RadioButton x:Name="KivyRadio" Content="Kivy (成熟稳定)" GroupName="Fw"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="3. Android 目标环境" Margin="0,8,0,0">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="最低版本 (minSdk)" Style="{StaticResource Label}"/>
+                            <ComboBox Grid.Column="1" x:Name="MinSdkCombo" Width="200" Margin="0,0,16,0">
+                                <ComboBoxItem Content="Android 5.0 (API 21)" IsSelected="True"/>
+                                <ComboBoxItem Content="Android 6.0 (API 23)"/>
+                                <ComboBoxItem Content="Android 7.0 (API 24)"/>
+                                <ComboBoxItem Content="Android 8.0 (API 26)"/>
+                                <ComboBoxItem Content="Android 9.0 (API 28)"/>
+                                <ComboBoxItem Content="Android 10 (API 29)"/>
+                                <ComboBoxItem Content="Android 11 (API 30)"/>
+                                <ComboBoxItem Content="Android 12 (API 31)"/>
+                                <ComboBoxItem Content="Android 13 (API 33)"/>
+                            </ComboBox>
+                            <TextBlock Grid.Column="2" Text="目标版本 (targetSdk)" Style="{StaticResource Label}"/>
+                            <ComboBox Grid.Column="3" x:Name="TargetSdkCombo" Width="200">
+                                <ComboBoxItem Content="Android 11 (API 30)"/>
+                                <ComboBoxItem Content="Android 12 (API 31)"/>
+                                <ComboBoxItem Content="Android 13 (API 33)" IsSelected="True"/>
+                                <ComboBoxItem Content="Android 14 (API 34)"/>
+                                <ComboBoxItem Content="Android 15 (API 35)"/>
+                            </ComboBox>
+                        </Grid>
+                        <TextBlock Text="支持的 CPU 架构 (ABI)" Style="{StaticResource Label}" Margin="0,12,0,4"/>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox x:Name="AbiArmv7" Content="armeabi-v7a (32 位 ARM，兼容老机)" IsChecked="True"/>
+                            <CheckBox x:Name="AbiArm64" Content="arm64-v8a (64 位 ARM，主流)" IsChecked="True" Margin="12,0,0,0"/>
+                            <CheckBox x:Name="AbiX86" Content="x86 (模拟器)" Margin="12,0,0,0"/>
+                            <CheckBox x:Name="AbiX8664" Content="x86_64 (模拟器/Chromebook)" Margin="12,0,0,0"/>
+                        </StackPanel>
+                        <TextBlock TextWrapping="Wrap" Margin="0,8,0,0" FontSize="12" Foreground="{StaticResource MutedBrush}"
+                                   Text="提示：勾选的 ABI 越多，APK 体积越大。多数应用只需 arm64-v8a（+ armeabi-v7a 兼容老设备）。"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="4. 编译方式（本地为主，云端兜底）" Margin="0,8,0,0">
+                    <StackPanel>
+                        <RadioButton x:Name="LocalRadio" Content="本地 WSL2 打包（首选：在本机编译，首次需一键配置环境）" GroupName="Backend" IsChecked="True"/>
+                        <RadioButton x:Name="CloudRadio" Content="云端服务器打包（兜底：本机不具备条件时使用，用户免配环境）" GroupName="Backend" Margin="0,8,0,0"/>
+                        <TextBlock x:Name="BackendHint" TextWrapping="Wrap" Margin="0,10,0,0" FontSize="12"
+                                   Foreground="{StaticResource MutedBrush}"
+                                   Text="本地：在你电脑的 WSL2(Ubuntu) 内执行 buildozer android debug。首次使用需点“一键开启本地打包环境”自动装好 JDK/SDK/buildozer（可能需要重启）。若本机被固件虚拟化阻塞或你放弃本地，会自动改用云端。"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="5. 本地打包环境体检（选择“本地 WSL2 打包”时使用）" Margin="0,8,0,0">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <Button x:Name="DetectLocalBtn" Content="🔍 检测本地环境" Click="DetectLocal_Click"/>
+                            <Button x:Name="OneClickBtn" Content="⚙️ 一键开启本地打包环境" Style="{StaticResource Primary}" Click="OneClick_Click"/>
+                        </StackPanel>
+
+                        <TextBlock x:Name="VerdictText" TextWrapping="Wrap" FontSize="14" FontWeight="Bold"
+                                   Foreground="{StaticResource MutedBrush}" Text="尚未检测。点“检测本地环境”查看本机能否编译 APK。"/>
+
+                        <ProgressBar x:Name="SetupProgress" Height="14" Minimum="0" Maximum="100" Margin="0,10,0,0"
+                                     Background="{StaticResource OverlayBrush}" Foreground="{StaticResource GreenBrush}"
+                                     BorderThickness="0" Visibility="Collapsed"/>
+
+                        <Border x:Name="ProbeCard" Background="{StaticResource SurfaceBrush}" CornerRadius="6"
+                                Padding="12" Margin="0,10,0,0" Visibility="Collapsed">
+                            <StackPanel x:Name="ProbePanel"/>
+                        </Border>
+
+                        <TextBlock x:Name="GuidanceText" TextWrapping="Wrap" Margin="0,10,0,0" FontSize="12"
+                                   Foreground="{StaticResource SubtextBrush}" Visibility="Collapsed"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="6. 云端服务器（选择“云端服务器打包”时使用）" Margin="0,8,0,0">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="服务器地址" Style="{StaticResource Label}"/>
+                            <TextBox Grid.Column="1" x:Name="ServerBox" Margin="8,0,8,0"
+                                     ToolTip="例如 http://192.168.1.10:8000"/>
+                            <Button Grid.Column="2" x:Name="TestConnBtn" Content="测试连接" Click="TestConn_Click"/>
+                        </Grid>
+                        <TextBlock x:Name="CloudHint" TextWrapping="Wrap" Margin="0,8,0,0" FontSize="12"
+                                   Foreground="{StaticResource MutedBrush}"
+                                   Text="服务端参考实现见 scripts/apk_server/（Dockerfile + FastAPI）。把它部署到任意 Linux 机器后，在此填入地址即可云端编译。"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="7. 打包前检查（依赖 / UI 能否做成 APK）" Margin="0,8,0,0">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <Button x:Name="PreflightBtn" Content="🔎 运行打包前检查" Click="Preflight_Click"/>
+                            <CheckBox x:Name="ForceBuildCheck" Content="即使有阻断项也允许尝试打包" Margin="14,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock x:Name="PreflightVerdict" TextWrapping="Wrap" FontSize="14" FontWeight="Bold"
+                                   Foreground="{StaticResource MutedBrush}"
+                                   Text="尚未检查。强烈建议打包前先确认项目用到的库与 UI 能在 Android 上运行——桌面 GUI(tkinter/PyQt)、Windows 专有、重型科学计算(torch/cv2) 等无法打包。"/>
+                        <Border x:Name="PreflightCard" Background="{StaticResource SurfaceBrush}" CornerRadius="6"
+                                Padding="12" Margin="0,10,0,0" Visibility="Collapsed">
+                            <StackPanel x:Name="PreflightPanel"/>
+                        </Border>
+                        <TextBlock x:Name="PreflightSummary" TextWrapping="Wrap" Margin="0,10,0,0" FontSize="12"
+                                   Foreground="{StaticResource SubtextBrush}" Visibility="Collapsed"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <StackPanel Orientation="Horizontal" Margin="0,12,0,4">
+                    <Button x:Name="GenSpecBtn" Content="📄 生成 buildozer.spec 模板" Style="{StaticResource Primary}" Click="GenSpec_Click"/>
+                    <Button x:Name="BuildApkBtn" Content="📱 开始打包 APK" Click="BuildApk_Click"/>
+                    <Button x:Name="OpenProjectBtn" Content="📂 打开项目目录" Click="OpenProject_Click"/>
+                    <Button x:Name="OpenApkBtn" Content="📦 打开 APK 目录" Click="OpenApk_Click" IsEnabled="False"/>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- 结果横幅：编译失败日志 / 成功 / 异常 常驻页面显示 -->
+        <Border Grid.Row="1" x:Name="ResultBanner" Visibility="Collapsed"
+                CornerRadius="8" Padding="12,8" Margin="0,10,0,0">
+            <TextBox x:Name="ResultText" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"
+                     Background="Transparent" FontSize="12.5" MaxHeight="140"
+                     VerticalScrollBarVisibility="Auto" FontFamily="Consolas, Cascadia Mono"/>
+        </Border>
+
+        <GroupBox Grid.Row="2" Header="日志" Margin="0,10,0,0">
+            <TextBox x:Name="LogBox" Style="{StaticResource LogBox}"/>
+        </GroupBox>
+    </Grid>
+</UserControl>

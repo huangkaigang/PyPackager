@@ -1,0 +1,88 @@
+<UserControl x:Class="PyPackager.Views.BatchBuildView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="{StaticResource BgBrush}">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="150"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <TextBlock Text="批量打包" Style="{StaticResource PageTitle}"/>
+            <TextBlock Text="一次加入多个 Python 项目，选择统一引擎后顺序打包。每个项目的进度与结果单独显示。"
+                       Style="{StaticResource PageSubtitle}"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Margin="0,0,0,10">
+          <StackPanel Orientation="Horizontal">
+            <Button x:Name="AddBtn" Content="➕ 添加项目" Click="Add_Click"/>
+            <Button x:Name="RemoveBtn" Content="➖ 移除选中" Click="Remove_Click"/>
+            <Button x:Name="ClearBtn" Content="清空" Click="Clear_Click"/>
+            <TextBlock Text="引擎" Style="{StaticResource Label}" Margin="16,0,8,0"/>
+            <ComboBox x:Name="EngineCombo" Width="140" SelectionChanged="Target_Changed">
+                <ComboBoxItem Content="PyInstaller" IsSelected="True"/>
+                <ComboBoxItem Content="Nuitka"/>
+            </ComboBox>
+            <CheckBox x:Name="OneFileCheck" Content="单文件" IsChecked="True" Margin="16,0,0,0"/>
+            <CheckBox x:Name="NoConsoleCheck" Content="无控制台" Margin="8,0,0,0"/>
+            <TextBlock Text="目标系统" Style="{StaticResource Label}" Margin="16,0,8,0"/>
+            <ComboBox x:Name="TargetCombo" Width="220" SelectionChanged="Target_Changed">
+                <ComboBoxItem Content="自动 / 当前系统（本机 Python）" IsSelected="True"/>
+                <ComboBoxItem Content="Windows 7 / Server 2008 R2"/>
+                <ComboBoxItem Content="Windows 8 / 8.1 / Server 2012 R2"/>
+                <ComboBoxItem Content="Windows 10 / Server 2016 / 2019"/>
+                <ComboBoxItem Content="Windows 11 / Server 2022 / 2025 / 2026"/>
+            </ComboBox>
+            <TextBlock Text="架构" Style="{StaticResource Label}" Margin="12,0,8,0"/>
+            <ComboBox x:Name="ArchCombo" Width="130" SelectionChanged="Target_Changed">
+                <ComboBoxItem Content="自动（64 位）" IsSelected="True"/>
+                <ComboBoxItem Content="x86（32 位）"/>
+                <ComboBoxItem Content="x64（64 位）"/>
+            </ComboBox>
+          </StackPanel>
+          <TextBlock x:Name="TargetHint" TextWrapping="Wrap" FontSize="12"
+                     Foreground="{StaticResource MutedBrush}" Margin="0,6,0,0"
+                     Text="不下载运行时，直接用本机系统 Python。"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,10">
+            <Button x:Name="BuildBtn" Content="🚀 开始批量打包" Style="{StaticResource Primary}" Click="Build_Click"/>
+            <Button x:Name="CancelBtn" Content="取消" Click="Cancel_Click" IsEnabled="False"/>
+            <TextBlock Text="统一图标(.ico)" Style="{StaticResource Label}" Margin="16,0,8,0"/>
+            <TextBox x:Name="IconBox" Width="180" ToolTip="可选，应用到所有项目"/>
+            <Button x:Name="IconBtn" Content="…" Padding="10,5" Click="BrowseIcon_Click"/>
+            <TextBlock Text="统一版本号" Style="{StaticResource Label}" Margin="16,0,8,0"/>
+            <TextBox x:Name="VersionBox" Width="100" ToolTip="可选，例如 1.0.0.0，应用到所有项目"/>
+        </StackPanel>
+
+        <!-- 项目列表 -->
+        <Border Grid.Row="3" Background="{StaticResource SurfaceBrush}" CornerRadius="8" Padding="4">
+            <ListView x:Name="ItemsList" Background="Transparent" BorderThickness="0"
+                      Foreground="{StaticResource TextBrush}" ScrollViewer.HorizontalScrollBarVisibility="Auto">
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="项目目录" Width="360" DisplayMemberBinding="{Binding ProjectPath}"/>
+                        <GridViewColumn Header="状态" Width="120" DisplayMemberBinding="{Binding Status}"/>
+                        <GridViewColumn Header="产物 / 错误" Width="420" DisplayMemberBinding="{Binding Output}"/>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+        </Border>
+
+        <Grid Grid.Row="4" Margin="0,10,0,10">
+            <ProgressBar x:Name="Progress" Height="16" Minimum="0" Maximum="100"
+                         Background="{StaticResource OverlayBrush}" Foreground="{StaticResource GreenBrush}" BorderThickness="0"/>
+            <TextBlock x:Name="ProgressText" HorizontalAlignment="Center" VerticalAlignment="Center"
+                       FontSize="11" Foreground="#1E1E2E" FontWeight="Bold" Text="就绪"/>
+        </Grid>
+
+        <GroupBox Grid.Row="5" Header="日志">
+            <TextBox x:Name="LogBox" Style="{StaticResource LogBox}"/>
+        </GroupBox>
+    </Grid>
+</UserControl>
