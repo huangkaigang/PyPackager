@@ -3,6 +3,8 @@ bin/
 obj/
 [Bb]uild/
 [Rr]elease/
+publish/
+*.zip
 *.user
 *.suo
 *.userosscache
