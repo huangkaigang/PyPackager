@@ -12,6 +12,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
@@ -208,23 +209,59 @@
             </StackPanel>
         </GroupBox>
 
+        <!-- 打成安装包 -->
+        <GroupBox Grid.Row="4" Header="4. 打成安装包（Inno Setup）">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <CheckBox x:Name="EnableInstallerCheck" Content="打包成功后自动生成安装包" IsChecked="True"/>
+                    <CheckBox x:Name="DesktopIconCheck" Content="安装时可选桌面快捷方式" IsChecked="True"/>
+                    <Button x:Name="InstallInnoBtn" Content="⬇ 下载并安装 Inno Setup" Click="InstallInno_Click"
+                            Visibility="Collapsed" Padding="10,4"/>
+                </StackPanel>
+                <Grid Margin="0,10,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="120"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="版本" Style="{StaticResource Label}"/>
+                    <TextBox Grid.Column="1" x:Name="InstVersionBox" Text="1.0.0" Margin="0,0,16,0"/>
+                    <TextBlock Grid.Column="2" Text="发布者" Style="{StaticResource Label}"/>
+                    <TextBox Grid.Column="3" x:Name="InstPublisherBox" Text="PyPackager" Margin="0,0,12,0"/>
+                    <Button Grid.Column="4" x:Name="GenInstallerBtn" Content="📦 单独生成安装包…" Click="GenInstaller_Click"/>
+                </Grid>
+                <TextBlock x:Name="InnoStatusText" TextWrapping="Wrap" Margin="0,8,0,0" FontSize="12"
+                           Foreground="{StaticResource MutedBrush}" Text="正在检测 Inno Setup …"/>
+            </StackPanel>
+        </GroupBox>
+
         <!-- 操作 -->
-        <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,4,0,12">
+        <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="0,4,0,12">
             <Button x:Name="BuildBtn" Content="🚀 开始打包 EXE" Style="{StaticResource Primary}" Click="Build_Click"/>
             <Button x:Name="CancelBtn" Content="取消" Click="Cancel_Click" IsEnabled="False"/>
             <Button x:Name="OpenOutBtn" Content="📂 打开输出目录" Click="OpenOutput_Click" IsEnabled="False"/>
         </StackPanel>
 
         <!-- 进度 -->
-        <Grid Grid.Row="5" Margin="0,0,0,10">
+        <Grid Grid.Row="6" Margin="0,0,0,10">
             <ProgressBar x:Name="Progress" Height="18" Minimum="0" Maximum="100"
                          Background="{StaticResource OverlayBrush}" Foreground="{StaticResource GreenBrush}" BorderThickness="0"/>
             <TextBlock x:Name="ProgressText" HorizontalAlignment="Center" VerticalAlignment="Center"
                        FontSize="11" Foreground="#1E1E2E" FontWeight="Bold" Text="就绪"/>
         </Grid>
 
+        <!-- 结果横幅：失败/异常常驻页面显示 -->
+        <Border Grid.Row="7" x:Name="ResultBanner" Visibility="Collapsed"
+                CornerRadius="8" Padding="12,8" Margin="0,0,0,10">
+            <TextBox x:Name="ResultText" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"
+                     Background="Transparent" FontSize="12.5" MaxHeight="120"
+                     VerticalScrollBarVisibility="Auto" FontFamily="Consolas, Cascadia Mono"/>
+        </Border>
+
         <!-- 日志 -->
-        <GroupBox Grid.Row="6" Header="4. 实时日志" Grid.RowSpan="2">
+        <GroupBox Grid.Row="8" Header="5. 实时日志">
             <TextBox x:Name="LogBox" Style="{StaticResource LogBox}"/>
         </GroupBox>
     </Grid>

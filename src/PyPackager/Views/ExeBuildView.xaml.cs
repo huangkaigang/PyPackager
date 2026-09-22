@@ -13,11 +13,19 @@ public partial class ExeBuildView : UserControl
 {
     private CancellationTokenSource? _cts;
     private string? _lastOutputDir;
+    // 最近日志环形缓冲：失败时把日志直接铺到页面横幅
+    private readonly List<string> _recentLogs = new();
+    private const int RecentLogCap = 80;
 
     public ExeBuildView()
     {
         InitializeComponent();
         UpdateTargetHint();
+        Loaded += async (_, _) =>
+        {
+            RefreshInnoStatus();
+            await Task.CompletedTask;
+        };
     }
 
     // ---------- 日志 / 进度 / 状态 ----------
@@ -26,6 +34,32 @@ public partial class ExeBuildView : UserControl
     {
         LogBox.AppendText(line + Environment.NewLine);
         LogBox.ScrollToEnd();
+        _recentLogs.Add(line);
+        if (_recentLogs.Count > RecentLogCap) _recentLogs.RemoveAt(0);
+    });
+
+    /// <summary>把成功/失败/异常结果常驻显示在页面横幅；失败时附带最近日志。</summary>
+    private void SetResult(bool ok, string headline, bool includeRecentLog = false) => Dispatcher.Invoke(() =>
+    {
+        ResultBanner.Visibility = Visibility.Visible;
+        ResultBanner.Background = (Brush)FindResource(ok ? "GreenBrush" : "RedBrush");
+        ResultText.Foreground = new SolidColorBrush(Color.FromRgb(0x1E, 0x1E, 0x2E));
+        var sb = new System.Text.StringBuilder();
+        sb.Append(ok ? "✔ 成功：" : "✘ 失败：").Append(headline);
+        if (!ok && includeRecentLog && _recentLogs.Count > 0)
+        {
+            sb.Append("\n──── 最近日志 ────\n");
+            sb.Append(string.Join("\n", _recentLogs.TakeLast(30)));
+        }
+        ResultText.Text = sb.ToString();
+        ResultText.ScrollToEnd();
+    });
+
+    private void ResetResult() => Dispatcher.Invoke(() =>
+    {
+        _recentLogs.Clear();
+        ResultBanner.Visibility = Visibility.Collapsed;
+        ResultText.Text = string.Empty;
     });
 
     private void SetProgress(int value, string? text = null) => Dispatcher.Invoke(() =>
@@ -284,6 +318,7 @@ public partial class ExeBuildView : UserControl
         }
 
         LogBox.Clear();
+        ResetResult();
         _lastOutputDir = null;
         OpenOutBtn.IsEnabled = false;
         SetBusy(true);
@@ -301,6 +336,7 @@ public partial class ExeBuildView : UserControl
             SetProgress(0, "失败 ✗");
             AppendLog("[错误] " + resolution.Error);
             SetStatus("环境准备失败：" + resolution.Error);
+            SetResult(false, "环境准备失败：" + resolution.Error, includeRecentLog: true);
             RecordHistory(options, false, null, resolution.Error, sw.ElapsedMilliseconds);
             return;
         }
@@ -337,14 +373,22 @@ public partial class ExeBuildView : UserControl
             SetStatus($"打包成功（{sw.Elapsed.TotalSeconds:0.0}s）：{result.OutputExe}");
             AppendLog($"[成功] 产物已生成：{result.OutputExe}");
             RecordHistory(options, true, result.OutputExe, null, sw.ElapsedMilliseconds);
+            SetResult(true, $"EXE 打包成功（{sw.Elapsed.TotalSeconds:0.0}s），已保存到本地：\n{result.OutputExe}");
             MessageBox.Show($"打包成功（{sw.Elapsed.TotalSeconds:0.0}s）！\n\n已保存到本地：\n{result.OutputExe}",
                 "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+
+            // 勾选“打包成功后自动生成安装包”时，直接把输出目录编译成 setup
+            if (EnableInstallerCheck.IsChecked == true && _lastOutputDir is not null)
+            {
+                await GenerateInstallerAsync(_lastOutputDir, Path.GetFileName(result.OutputExe));
+            }
         }
         else
         {
             SetProgress(0, "失败 ✗");
             SetStatus("打包失败：" + (result.Error ?? "未知错误"));
             AppendLog("[失败] " + (result.Error ?? "未知错误"));
+            SetResult(false, "打包失败：" + (result.Error ?? "未知错误"), includeRecentLog: true);
             RecordHistory(options, false, null, result.Error, sw.ElapsedMilliseconds);
         }
     }
@@ -375,6 +419,157 @@ public partial class ExeBuildView : UserControl
         if (_lastOutputDir is not null && Directory.Exists(_lastOutputDir))
         {
             Process.Start(new ProcessStartInfo { FileName = _lastOutputDir, UseShellExecute = true, Verb = "open" });
+        }
+    }
+
+    // ---------- 打成安装包（Inno Setup） ----------
+
+    /// <summary>探测本机 Inno Setup 并刷新提示文字与“下载安装”按钮可见性。</summary>
+    private void RefreshInnoStatus()
+    {
+        var iscc = InstallerService.FindIscc();
+        if (iscc is not null)
+        {
+            InnoStatusText.Foreground = (Brush)FindResource("GreenBrush");
+            InnoStatusText.Text = $"✔ 已检测到 Inno Setup：{iscc}";
+            InstallInnoBtn.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            InnoStatusText.Foreground = (Brush)FindResource("YellowBrush");
+            InnoStatusText.Text = $"⚠ 未检测到 Inno Setup（ISCC.exe）。生成安装包需要它，可点右侧按钮一键下载安装，或到 {InstallerService.DownloadUrl} 手动安装。";
+            InstallInnoBtn.Visibility = Visibility.Visible;
+        }
+    }
+
+    private async void InstallInno_Click(object sender, RoutedEventArgs e)
+    {
+        var confirm = MessageBox.Show(
+            "即将从 Inno Setup 官网下载并静默安装（安装过程可能弹出 UAC 提权）。\n\n确认继续？",
+            "下载并安装 Inno Setup", MessageBoxButton.YesNo, MessageBoxImage.Information);
+        if (confirm != MessageBoxResult.Yes) return;
+
+        InstallInnoBtn.IsEnabled = false;
+        GenInstallerBtn.IsEnabled = false;
+        AppendLog("[安装包] 开始获取 Inno Setup …");
+        SetStatus("正在下载并安装 Inno Setup……");
+        try
+        {
+            using var cts = new CancellationTokenSource();
+            var ok = await InstallerService.EnsureInstalledAsync(AppendLog, new Progress<int>(v => SetProgress(v, $"下载中 {v}%")), cts.Token);
+            RefreshInnoStatus();
+            SetProgress(0, "就绪");
+            if (ok)
+            {
+                SetResult(true, "Inno Setup 安装完成，现在可以生成安装包。");
+                SetStatus("Inno Setup 安装完成。");
+            }
+            else
+            {
+                SetResult(false, "Inno Setup 安装未成功，请手动安装后重试。", includeRecentLog: true);
+                SetStatus("Inno Setup 安装失败。");
+            }
+        }
+        catch (Exception ex)
+        {
+            AppendLog("[错误] " + ex.Message);
+            RefreshInnoStatus();
+            SetProgress(0, "失败 ✗");
+            SetResult(false, "下载/安装 Inno Setup 出错：" + ex.Message, includeRecentLog: true);
+            SetStatus("Inno Setup 安装出错：" + ex.Message);
+        }
+        finally
+        {
+            InstallInnoBtn.IsEnabled = true;
+            GenInstallerBtn.IsEnabled = true;
+        }
+    }
+
+    private async void GenInstaller_Click(object sender, RoutedEventArgs e)
+    {
+        // 源目录：优先用最近一次打包的输出目录，否则让用户选一个含 EXE 的目录
+        var sourceDir = _lastOutputDir;
+        if (sourceDir is null || !Directory.Exists(sourceDir))
+        {
+            var dialog = new OpenFolderDialog { Title = "选择包含已打包 EXE 的输出目录" };
+            if (dialog.ShowDialog() != true) return;
+            sourceDir = dialog.FolderName;
+        }
+
+        // 主程序：目录里的第一个 .exe（排除 setup 自身）
+        string? mainExe = null;
+        try
+        {
+            mainExe = Directory.EnumerateFiles(sourceDir, "*.exe", SearchOption.TopDirectoryOnly)
+                .Select(Path.GetFileName)
+                .FirstOrDefault(n => !string.IsNullOrEmpty(n) && !n.EndsWith("-Setup", StringComparison.OrdinalIgnoreCase));
+        }
+        catch (Exception ex) { AppendLog($"[警告] 读取目录失败：{ex.Message}"); }
+
+        if (mainExe is null)
+        {
+            SetResult(false, $"目录中未找到可作为主程序的 EXE：{sourceDir}", includeRecentLog: true);
+            return;
+        }
+
+        await GenerateInstallerAsync(sourceDir, mainExe);
+    }
+
+    /// <summary>把指定输出目录编译成 Inno Setup 安装包，并把结果常驻显示到页面。</summary>
+    private async Task GenerateInstallerAsync(string sourceDir, string mainExe)
+    {
+        var appName = string.IsNullOrWhiteSpace(AppNameBox.Text)
+            ? Path.GetFileNameWithoutExtension(mainExe)
+            : AppNameBox.Text.Trim();
+        var version = string.IsNullOrWhiteSpace(InstVersionBox.Text) ? "1.0.0" : InstVersionBox.Text.Trim();
+        var publisher = string.IsNullOrWhiteSpace(InstPublisherBox.Text) ? "PyPackager" : InstPublisherBox.Text.Trim();
+        var icon = string.IsNullOrWhiteSpace(IconBox.Text) ? null : IconBox.Text.Trim();
+
+        var opt = new InstallerOptions(
+            AppName: appName,
+            Version: version,
+            Publisher: publisher,
+            SourceDir: sourceDir,
+            MainExe: mainExe,
+            IconPath: icon,
+            OutputDir: sourceDir,
+            DesktopIcon: DesktopIconCheck.IsChecked == true);
+
+        GenInstallerBtn.IsEnabled = false;
+        AppendLog($"—— 开始生成安装包（{appName} {version}）——");
+        SetStatus("正在生成安装包……");
+        SetProgress(30, "编译安装包…");
+        try
+        {
+            var res = await InstallerService.BuildAsync(opt, AppendLog);
+            if (res.Success && res.InstallerPath is not null)
+            {
+                SetProgress(100, "安装包完成 ✓");
+                SetResult(true, $"安装包已生成并保存到本地：\n{res.InstallerPath}");
+                SetStatus($"安装包生成成功：{res.InstallerPath}");
+                MessageBox.Show($"安装包生成成功！\n\n已保存到本地：\n{res.InstallerPath}",
+                    "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                var dir = Path.GetDirectoryName(res.InstallerPath);
+                if (dir is not null) _lastOutputDir = dir;
+                OpenOutBtn.IsEnabled = true;
+            }
+            else
+            {
+                SetProgress(0, "失败 ✗");
+                SetResult(false, res.Error ?? "安装包生成失败。", includeRecentLog: true);
+                SetStatus("安装包生成失败：" + (res.Error ?? "未知错误"));
+            }
+        }
+        catch (Exception ex)
+        {
+            AppendLog("[错误] " + ex.Message);
+            SetProgress(0, "失败 ✗");
+            SetResult(false, "生成安装包出错：" + ex.Message, includeRecentLog: true);
+            SetStatus("生成安装包出错：" + ex.Message);
+        }
+        finally
+        {
+            GenInstallerBtn.IsEnabled = true;
         }
     }
 }
